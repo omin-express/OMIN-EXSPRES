@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OMIN EXPRESS - Маркетплейс</title>
+    <!-- Leaflet OpenStreetMap -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+        :root {
+            --wb-purple: #cb11ab;
+            --wb-dark-purple: #481173;
+            --wb-gradient: linear-gradient(135deg, #cb11ab 0%, #481173 100%);
+            --wb-bg: #f6f6f9;
+            --wb-card-bg: #ffffff;
+            --wb-text: #242424;
+            --wb-gray: #868695;
+            --wb-light-gray: #f0f0f4;
+            --wb-green: #00a046;
+            --wb-red: #f44336;
+            --wb-orange: #ff9800;
+        }
+        body { background-color: var(--wb-bg); color: var(--wb-text); padding-bottom: 60px; }
+        header { background: var(--wb-gradient); color: white; padding: 12px 20px; position: sticky; top: 0; z-index: 1000; box-shadow: 0 4px 15px rgba(0,0,0,0.15); }
+        .header-container { max-width: 1300px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; gap: 15px; flex-wrap: wrap; }
+        .logo-brand { font-size: 1.6rem; font-weight: 900; color: white; text-decoration: none; }
+        .search-bar { flex: 1; max-width: 450px; }
+        .search-bar input { width: 100%; padding: 10px 18px; border-radius: 25px; border: none; outline: none; font-size: 0.95rem; background: rgba(255, 255, 255, 0.95); }
+        .header-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+        .btn-wb { background: rgba(255, 255, 255, 0.2); color: white; border: 1px solid rgba(255, 255, 255, 0.4); padding: 8px 14px; border-radius: 8px; font-weight: 600; font-size: 0.85rem; cursor: pointer; transition: 0.2s; }
+        .btn-wb:hover { background: rgba(255, 255, 255, 0.35); }
+        .cart-badge { background: #ff3b30; color: white; padding: 2px 6px; border-radius: 10px; font-size: 0.75rem; margin-left: 4px; }
+        
+        .category-bar { background: white; box-shadow: 0 2px 8px rgba(0,0,0,0.05); padding: 10px 0; margin-bottom: 25px; }
+        .category-container { max-width: 1300px; margin: 0 auto; display: flex; gap: 12px; overflow-x: auto; padding: 0 20px; scrollbar-width: none; }
+        .category-chip { background: var(--wb-light-gray); border: 1px solid #e0e0e8; color: var(--wb-text); padding: 8px 18px; border-radius: 20px; white-space: nowrap; cursor: pointer; font-size: 0.9rem; font-weight: 600; }
+        .category-chip:hover, .category-chip.active { background: var(--wb-purple); color: white; border-color: var(--wb-purple); }
+
+        .main-container { max-width: 1300px; margin: 0 auto; padding: 0 20px; }
+        .products-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 20px; }
+        .product-card { background: var(--wb-card-bg); border-radius: 12px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.06); display: flex; flex-direction: column; justify-content: space-between; position: relative; transition: transform 0.2s; }
+        .product-card:hover { transform: translateY(-4px); }
+        .badge-discount { position: absolute; top: 10px; left: 10px; background: var(--wb-purple); color: white; font-size: 0.75rem; font-weight: bold; padding: 4px 8px; border-radius: 6px; }
+        .product-img-holder { width: 100%; height: 220px; background: var(--wb-light-gray); display: flex; align-items: center; justify-content: center; }
+        .product-img-holder img { width: 100%; height: 100%; object-fit: cover; }
+        .product-content { padding: 12px; display: flex; flex-direction: column; gap: 6px; }
+        .price-box { display: flex; align-items: baseline; gap: 8px; }
+        .current-price { font-size: 1.25rem; font-weight: 800; color: var(--wb-purple); }
+        .old-price { font-size: 0.85rem; color: var(--wb-gray); text-decoration: line-through; }
+        .product-name { font-size: 0.92rem; font-weight: 500; height: 2.6em; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+        .seller-tag { font-size: 0.75rem; color: var(--wb-gray); background: var(--wb-light-gray); padding: 2px 6px; border-radius: 4px; width: fit-content; }
+        .btn-add-cart { width: 100%; background: var(--wb-purple); color: white; border: none; padding: 10px; font-weight: 700; cursor: pointer; }
+        .btn-add-cart:hover { background: var(--wb-dark-purple); }
+
+        .admin-section { display: none; background: white; border-radius: 14px; padding: 25px; margin-top: 30px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
+        .admin-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid var(--wb-light-gray); padding-bottom: 15px; margin-bottom: 20px; }
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 25px; }
+        .stat-card { background: var(--wb-light-gray); border-left: 4px solid var(--wb-purple); padding: 18px; border-radius: 8px; }
+        .stat-card h4 { font-size: 0.85rem; color: var(--wb-gray); margin-bottom: 5px; }
+        .stat-card .val { font-size: 1.6rem; font-weight: 800; }
+        .table-responsive { width: 100%; overflow-x: auto; margin-bottom: 25px; }
+        table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+        th, td { padding: 12px 14px; text-align: left; border-bottom: 1px solid var(--wb-light-gray); }
+        th { background: #fafafa; color: var(--wb-gray); }
+        .status-badge { padding: 4px 10px; border-radius: 12px; font-size: 0.75rem; font-weight: bold; }
+        .status-pending { background: #fff3e0; color: var(--wb-orange); }
+        .status-onway { background: #e3f2fd; color: #1976d2; }
+        .status-delivered { background: #e8f5e9; color: var(--wb-green); }
+        #map { height: 350px; width: 100%; border-radius: 10px; margin-top: 15px; }
+
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.6); z-index: 2000; justify-content: center; align-items: center; padding: 15px; }
+        .modal-body { background: white; border-radius: 14px; width: 100%; max-width: 500px; padding: 25px; position: relative; max-height: 90vh; overflow-y: auto; }
+        .modal-close { position: absolute; top: 15px; right: 15px; font-size: 1.5rem; cursor: pointer; color: var(--wb-gray); }
+        .form-group { margin-bottom: 14px; }
+        .form-group label { display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 6px; }
+        .form-group input, .form-group select, .form-group textarea { width: 100%; padding: 10px 12px; border: 1px solid #dcdce6; border-radius: 8px; font-size: 0.95rem; outline: none; }
+        .btn-submit { width: 100%; background: var(--wb-purple); color: white; border: none; padding: 12px; border-radius: 8px; font-size: 1rem; font-weight: bold; cursor: pointer; margin-top: 10px; }
+        .btn-submit:hover { background: var(--wb-dark-purple); }
+        .btn-action-sm { padding: 4px 8px; border-radius: 6px; border: none; font-size: 0.75rem; font-weight: bold; cursor: pointer; margin-right: 4px; color: white; }
+        .btn-onway { background: #1976d2; }
+        .btn-delivered { background: var(--wb-green); }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="header-container">
+            <a href="#" class="logo-brand">OMIN EXPRESS</a>
+            <div class="search-bar">
+                <input type="text" id="searchInput" placeholder="Поиск товаров..." oninput="handleSearch()">
+            </div>
+            <div class="header-actions">
+                <button class="btn-wb" onclick="openModal('cartModal')">🛒 Корзина <span class="cart-badge" id="cartCount">0</span></button>
+                <button class="btn-wb" onclick="openModal('trackOrderModal')">🔍 Статус</button>
+                <button class="btn-wb" onclick="openModal('sellerRegModal')">🤝 + Сотрудник / Продавец</button>
+                <button class="btn-wb" onclick="openModal('sellerAddProductModal')">📦 Товар</button>
+                <button class="btn-wb" onclick="openModal('loginModal')">🔑 Вход</button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Kategoriyalar Paneli -->
+    <div class="category-bar">
+        <div class="category-container" id="categoryChips">
+            <button class="category-chip active" onclick="filterCategory('Все')">Все категории</button>
+            <button class="category-chip" onclick="filterCategory('Kiyim-kechak')">Kiyim-kechak</button>
+            <button class="category-chip" onclick="filterCategory('Telefonlar')">Telefonlar</button>
+            <button class="category-chip" onclick="filterCategory('Oyoq kiyim')">Oyoq kiyim</button>
+            <button class="category-chip" onclick="filterCategory('Aksessuar')">Aksessuar</button>
+            <button class="category-chip" onclick="filterCategory('Oziq-ovqat')">Oziq-ovqat</button>
+            <button class="category-chip" onclick="filterCategory('Parfumeriya')">Parfumeriya</button>
+            <button class="category-chip" onclick="filterCategory('Sovg\'alar')">Sovg'alar</button>
+        </div>
+    </div>
+
+    <div class="main-container">
+        <div class="products-grid" id="productGrid"></div>
+
+        <!-- Admin & Boshqaruv Paneli -->
+        <div class="admin-section" id="adminPanel">
+            <div class="admin-header">
+                <div>
+                    <h2>⚙️ Панель Управления OMIN EXPRESS</h2>
+                    <p style="font-size: 0.85rem; color: var(--wb-gray);" id="currentUserRole">Роль: Администратор</p>
+                </div>
+                <button class="btn-wb" style="background: var(--wb-red);" onclick="logoutAdmin()">Выйти</button>
+            </div>
+
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <h4>Посещений сайта</h4>
+                    <div class="val" id="visitorCountDisplay">0</div>
+                </div>
+                <div class="stat-card">
+                    <h4>Заказов (1 год)</h4>
+                    <div class="val" id="orderCountDisplay">0</div>
+                </div>
+                <div class="stat-card">
+                    <h4>Продавцов</h4>
+                    <div class="val" id="sellerCountDisplay">0</div>
+                </div>
+            </div>
+
+            <h3 style="margin-bottom: 10px;">📋 Заявки Продавцов и Солиқ (Комиссия)</h3>
+            <div class="table-responsive">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ФИО</th>
+                            <th>Телефон</th>
+                            <th>Статус</th>
+                            <th>Солиқ / Комиссия (%)</th>
+                            <th>Действия</th>
+                        </tr>
+                    </thead>
+                    <tbody id="sellersTableBody"></tbody>
+                </table>
+            </div>
+
+            <h3 style="margin-bottom: 10px;">📦 Заказы Клиентов (1 год хранения)</h3>
+            <div class="table-responsive">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Клиент</th>
+                            <th>Телефон</th>
+                            <th>Товары / Сумма</th>
+                            <th>Адрес</th>
+                            <th>Статус</th>
+                            <th>Управление</th>
+                            <th>Карта</th>
+                        </tr>
+                    </thead>
+                    <tbody id="ordersTableBody"></tbody>
+                </table>
+            </div>
+
+            <h3 style="margin-top: 15px;">🗺️ Карта Заказов</h3>
+            <div id="map"></div>
+        </div>
+    </div>
+
+    <!-- MODAL: Cart -->
+    <div class="modal-overlay" id="cartModal">
+        <div class="modal-body">
+            <span class="modal-close" onclick="closeModal('cartModal')">&times;</span>
+            <h3 style="margin-bottom: 15px;">🛒 Ваша Корзина</h3>
+            <div id="cartItemsList" style="margin-bottom: 15px;"></div>
+            <div style="font-size: 1.1rem; font-weight: bold; margin-bottom: 15px; text-align: right;">
+                Итого: <span id="cartTotalPrice" style="color:var(--wb-purple)">0 TJS</span>
+            </div>
+            <button class="btn-submit" onclick="proceedToCheckoutFromCart()">Оформить заказ</button>
+        </div>
+    </div>
+
+    <!-- MODAL: Track Order -->
+    <div class="modal-overlay" id="trackOrderModal">
+        <div class="modal-body">
+            <span class="modal-close" onclick="closeModal('trackOrderModal')">&times;</span>
+            <h3 style="margin-bottom: 15px;">🔍 Проверить статус заказа</h3>
+            <div class="form-group">
+                <label>Номер заказа или телефон:</label>
+                <input type="text" id="trackInput" placeholder="ID yoki telefon...">
+            </div>
+            <button class="btn-submit" onclick="checkOrderStatus()">Узнать статус</button>
+            <div id="trackResult" style="margin-top: 15px; font-weight: 600;"></div>
+        </div>
+    </div>
+
+    <!-- MODAL: Seller Reg -->
+    <div class="modal-overlay" id="sellerRegModal">
+        <div class="modal-body">
+            <span class="modal-close" onclick="closeModal('sellerRegModal')">&times;</span>
+            <h3 style="margin-bottom: 15px;">Регистрация Продавца</h3>
+            <form onsubmit="handleSellerRegister(event)">
+                <div class="form-group"><label>Ism</label><input type="text" id="regName" required></div>
+                <div class="form-group"><label>Familiya</label><input type="text" id="regSurname" required></div>
+                <div class="form-group"><label>Sharifi (Otechestvo)</label><input type="text" id="regMiddle" required></div>
+                <div class="form-group"><label>Telefon raqam</label><input type="tel" id="regPhone" required></div>
+                <div class="form-group"><label>PIN-код для входа</label><input type="password" id="regPin" required></div>
+                <button type="submit" class="btn-submit">Adminga ariza yuborish</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL: Add Product -->
+    <div class="modal-overlay" id="sellerAddProductModal">
+        <div class="modal-body">
+            <span class="modal-close" onclick="closeModal('sellerAddProductModal')">&times;</span>
+            <h3 style="margin-bottom: 15px;">Добавить Товар</h3>
+            <form onsubmit="handleAddProduct(event)">
+                <div class="form-group"><label>PIN-код продавца</label><input type="password" id="prodSellerPin" required></div>
+                <div class="form-group"><label>Tovar nomi</label><input type="text" id="prodTitle" required></div>
+                <div class="form-group">
+                    <label>Kategoriya</label>
+                    <select id="prodCategory">
+                        <option value="Kiyim-kechak">Kiyim-kechak</option>
+                        <option value="Telefonlar">Telefonlar</option>
+                        <option value="Oyoq kiyim">Oyoq kiyim</option>
+                        <option value="Aksessuar">Aksessuar</option>
+                        <option value="Oziq-ovqat">Oziq-ovqat</option>
+                        <option value="Parfumeriya">Parfumeriya</option>
+                        <option value="Sovg'alar">Sovg'alar</option>
+                    </select>
+                </div>
+                <div class="form-group"><label>Narxi (TJS)</label><input type="number" id="prodPrice" required></div>
+                <div class="form-group"><label>Eski narxi (Chegirma uchun)</label><input type="number" id="prodOldPrice" required></div>
+                <div class="form-group"><label>Rasm (Fayldan tanlash):</label><input type="file" id="prodImageFile" accept="image/*" required></div>
+                <button type="submit" class="btn-submit">Joylash</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL: Login (Parollar yozuvi o'chirildi) -->
+    <div class="modal-overlay" id="loginModal">
+        <div class="modal-body">
+            <span class="modal-close" onclick="closeModal('loginModal')">&times;</span>
+            <h3 style="margin-bottom: 15px;">Вход для Администраторов</h3>
+            <form onsubmit="handleAdminLogin(event)">
+                <div class="form-group"><label>Parolni kiriting:</label><input type="password" id="adminAuthPass" required></div>
+                <button type="submit" class="btn-submit">Kirish</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL: Checkout (WhatsApp) -->
+    <div class="modal-overlay" id="checkoutModal">
+        <div class="modal-body">
+            <span class="modal-close" onclick="closeModal('checkoutModal')">&times;</span>
+            <h3 style="margin-bottom: 15px;">Oformlenie zakaza (WhatsApp)</h3>
+            <form onsubmit="handleCustomerCheckout(event)">
+                <div class="form-group"><label>Ism</label><input type="text" id="custName" required></div>
+                <div class="form-group"><label>Familiya</label><input type="text" id="custSurname" required></div>
+                <div class="form-group"><label>Telefon raqam</label><input type="tel" id="custPhone" placeholder="+992..." required></div>
+                <div class="form-group"><label>Yetkazib berish manzili</label><input type="text" id="custAddress" required></div>
+                <button type="submit" class="btn-submit" style="background-color: #25D366;">💬 WhatsApp orqali yuborish</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const MY_WHATSAPP_NUMBER = "992051923434";
+
+        let sampleProducts = [
+            { id: 1, name: "Erkaklar Klassik Kostyumi", category: "Kiyim-kechak", price: 450, oldPrice: 600, img: "https://images.unsplash.com/photo-1594938298603-c8148c4dae35?w=400", seller: "OMIN Official" },
+            { id: 2, name: "Smartfon X Pro 128GB", category: "Telefonlar", price: 2500, oldPrice: 3000, img: "https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=400", seller: "TexnoMir" },
+            { id: 3, name: "Sport Oyoq kiyim (Krossovka)", category: "Oyoq kiyim", price: 320, oldPrice: 420, img: "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=400", seller: "SportLine" },
+            { id: 4, name: "Brend Qo'l Soati Gold", category: "Aksessuar", price: 210, oldPrice: 300, img: "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=400", seller: "JewelryCo" },
+            { id: 5, name: "Sarxil Olma (1 kg)", category: "Oziq-ovqat", price: 18, oldPrice: 25, img: "https://images.unsplash.com/photo-1560806887-1e4cd0b6cbd6?w=400", seller: "FruktMarket" },
+            { id: 6, name: "French Parfyum Elite", category: "Parfumeriya", price: 520, oldPrice: 650, img: "https://images.unsplash.com/photo-1523293182086-7651a899d37f?w=400", seller: "BeautyHall" },
+            { id: 7, name: "Sovg'a Qutisi Deluxe", category: "Sovg'alar", price: 140, oldPrice: 190, img: "https://images.unsplash.com/photo-1513201099705-a9746e1e201f?w=400", seller: "GiftShop" },
+            { id: 8, name: "Qishki Kurtka Puffer", category: "Kiyim-kechak", price: 680, oldPrice: 850, img: "https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=400", seller: "StyleStyle" },
+            { id: 9, name: "Bluetooth Quloqchinlar", category: "Telefonlar", price: 230, oldPrice: 310, img: "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=400", seller: "TexnoMir" },
+            { id: 10, name: "Klassik Charm Tuflar", category: "Oyoq kiyim", price: 410, oldPrice: 530, img: "https://images.unsplash.com/photo-1533867617858-e7d97e0afd8b?w=400", seller: "FootWear" }
+        ];
+
+        let activeCategory = 'Все';
+        let cart = [];
+        let map, mapMarkerGroup;
+
+        window.onload = function() {
+            let visits = parseInt(localStorage.getItem('omin_visits') || '245') + 1;
+            localStorage.setItem('omin_visits', visits.toString());
+            renderProducts();
+            initLeafletMap();
+            updateCartUI();
+        };
+
+        function renderProducts(category = 'Все', query = '') {
+            const grid = document.getElementById('productGrid');
+            grid.innerHTML = '';
+            let stored = JSON.parse(localStorage.getItem('omin_custom_products') || '[]');
+            let all = [...sampleProducts, ...stored];
+
+            let filtered = all.filter(p => (category === 'Все' || p.category === category) && p.name.toLowerCase().includes(query.toLowerCase()));
+
+            filtered.forEach(p => {
+                let disc = Math.round(((p.oldPrice - p.price) / p.oldPrice) * 100);
+                grid.innerHTML += `
+                    <div class="product-card">
+                        ${disc > 0 ? `<div class="badge-discount">-${disc}%</div>` : ''}
+                        <div class="product-img-holder"><img src="${p.img}" alt="${p.name}"></div>
+                        <div class="product-content">
+                            <div class="price-box"><span class="current-price">${p.price} TJS</span><span class="old-price">${p.oldPrice} TJS</span></div>
+                            <div class="product-name">${p.name}</div>
+                            <span class="seller-tag">Продавец: ${p.seller}</span>
+                        </div>
+                        <button class="btn-add-cart" onclick="addToCart(${p.id})">🛒 Savatchaga qo'shish</button>
+                    </div>
+                `;
+            });
+        }
+
+        function addToCart(productId) {
+            let stored = JSON.parse(localStorage.getItem('omin_custom_products') || '[]');
+            let all = [...sampleProducts, ...stored];
+            let prod = all.find(p => p.id === productId);
+            if (prod) {
+                cart.push(prod);
+                updateCartUI();
+                alert(`"${prod.name}" korzinaga qo'shildi!`);
+            }
+        }
+
+        function updateCartUI() {
+            document.getElementById('cartCount').innerText = cart.length;
+            let list = document.getElementById('cartItemsList');
+            let total = 0;
+            list.innerHTML = '';
+            cart.forEach((item, index) => {
+                total += item.price;
+                list.innerHTML += `
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; border-bottom:1px solid #eee; padding-bottom:5px;">
+                        <div>
+                            <b>${item.name}</b><br>
+                            <span style="color:var(--wb-purple)">${item.price} TJS</span>
+                        </div>
+                        <button onclick="removeFromCart(${index})" style="background:red; color:white; border:none; padding:4px 8px; border-radius:4px; cursor:pointer;">❌</button>
+                    </div>
+                `;
+            });
+            document.getElementById('cartTotalPrice').innerText = total + " TJS";
+        }
+
+        function removeFromCart(index) {
+            cart.splice(index, 1);
+            updateCartUI();
+        }
+
+        function proceedToCheckoutFromCart() {
+            if (cart.length === 0) { alert("Korzinangiz bo'sh!"); return; }
+            closeModal('cartModal');
+            openModal('checkoutModal');
+        }
+
+        function filterCategory(cat) {
+            activeCategory = cat;
+            document.querySelectorAll('.category-chip').forEach(b => b.classList.remove('active'));
+            event.target.classList.add('active');
+            renderProducts(cat);
+        }
+
+        function handleSearch() {
+            renderProducts(activeCategory, document.getElementById('searchInput').value);
+        }
+
+        function openModal(id) { document.getElementById(id).style.display = 'flex'; }
+        function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+
+        function handleSellerRegister(e) {
+            e.preventDefault();
+            let sellers = JSON.parse(localStorage.getItem('omin_sellers') || '[]');
+            sellers.push({
+                id: Date.now(),
+                name: `${document.getElementById('regName').value} ${document.getElementById('regSurname').value} (${document.getElementById('regMiddle').value})`,
+                phone: document.getElementById('regPhone').value,
+                pin: document.getElementById('regPin').value,
+                status: 'pending',
+                taxRate: 6
+            });
+            localStorage.setItem('omin_sellers', JSON.stringify(sellers));
+            alert("Arizangiz adminga yuborildi!");
+            closeModal('sellerRegModal');
+        }
+
+        function handleAddProduct(e) {
+            e.preventDefault();
+            let pin = document.getElementById('prodSellerPin').value;
+            let sellers = JSON.parse(localStorage.getItem('omin_sellers') || '[]');
+            let seller = sellers.find(s => s.pin === pin && s.status === 'approved');
+            if (!seller) { alert("PIN noto'g'ri yoki admin hali tasdiqlamagan!"); return; }
+
+            let file = document.getElementById('prodImageFile').files[0];
+            if (file) {
+                let reader = new FileReader();
+                reader.onload = function(evt) {
+                    let custom = JSON.parse(localStorage.getItem('omin_custom_products') || '[]');
+                    custom.push({
+                        id: Date.now(),
+                        name: document.getElementById('prodTitle').value,
+                        category: document.getElementById('prodCategory').value,
+                        price: parseFloat(document.getElementById('prodPrice').value),
+                        oldPrice: parseFloat(document.getElementById('prodOldPrice').value),
+                        img: evt.target.result,
+                        seller: seller.name
+                    });
+                    localStorage.setItem('omin_custom_products', JSON.stringify(custom));
+                    alert("Mahsulot muvaffaqiyatli qo'shildi!");
+                    closeModal('sellerAddProductModal');
+                    renderProducts(activeCategory);
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+
+        function handleCustomerCheckout(e) {
+            e.preventDefault();
+            let name = document.getElementById('custName').value;
+            let surname = document.getElementById('custSurname').value;
+            let phone = document.getElementById('custPhone').value;
+            let address = document.getElementById('custAddress').value;
+
+            let itemNames = cart.map(i => i.name).join(', ') || 'Standart zakaz';
+            let totalPrice = cart.reduce((sum, i) => sum + i.price, 0) || 0;
+            let orderId = Math.floor(1000 + Math.random() * 9000);
+
+            let orders = JSON.parse(localStorage.getItem('omin_orders') || '[]');
+            let newOrder = {
+                id: orderId,
+                client: `${name} ${surname}`,
+                phone: phone,
+                address: address,
+                items: itemNames,
+                total: totalPrice,
+                date: new Date().toLocaleDateString('ru-RU'),
+                timestamp: Date.now(),
+                status: 'Принят',
+                lat: 40.2827 + (Math.random() - 0.5) * 0.05,
+                lng: 69.6222 + (Math.random() - 0.5) * 0.05
+            };
+
+            const oneYear = 365 * 24 * 60 * 60 * 1000;
+            orders = orders.filter(o => (Date.now() - o.timestamp) < oneYear);
+
+            orders.push(newOrder);
+            localStorage.setItem('omin_orders', JSON.stringify(orders));
+
+            let message = `🛍️ *YANGI BUYURTMA #` + orderId + `*\n\n` +
+                          `👤 *Mijoz:* ` + name + ` ` + surname + `\n` +
+                          `📞 *Tel:* ` + phone + `\n` +
+                          `📍 *Manzil:* ` + address + `\n` +
+                          `📦 *Mahsulotlar:* ` + itemNames + `\n` +
+                          `💰 *Jami summa:* ` + totalPrice + ` TJS`;
+
+            let whatsappUrl = `https://api.whatsapp.com/send?phone=${MY_WHATSAPP_NUMBER}&text=${encodeURIComponent(message)}`;
+
+            cart = [];
+            updateCartUI();
+            closeModal('checkoutModal');
+            window.open(whatsappUrl, '_blank');
+        }
+
+        function checkOrderStatus() {
+            let val = document.getElementById('trackInput').value.trim();
+            let orders = JSON.parse(localStorage.getItem('omin_orders') || '[]');
+            let resDiv = document.getElementById('trackResult');
+
+            let found = orders.find(o => o.id == val || o.phone.includes(val));
+            if (found) {
+                resDiv.innerHTML = `Zakaz #${found.id}<br>Mijoz: ${found.client}<br>Holati: <b style="color:var(--wb-purple)">${found.status}</b> 🚚`;
+            } else {
+                resDiv.innerHTML = `<span style="color:red">Zakaz topilmadi.</span>`;
+            }
+        }
+
+        function handleAdminLogin(e) {
+            e.preventDefault();
+            let pwd = document.getElementById('adminAuthPass').value;
+            let roles = { 
+                '2007admin': 'Главный Администратор', 
+                '2007right': 'Правая рука (O\'ng qo\'l)', 
+                '2007left': 'Левая рука (Chap qo\'l)', 
+                '2007mod': 'Модератор',
+                '2007courier': 'Курьер'
+            };
+            if (roles[pwd]) {
+                alert(`Xush kelibsiz! Roli: ${roles[pwd]}`);
+                closeModal('loginModal');
+                document.getElementById('currentUserRole').innerText = `Roli: ${roles[pwd]}`;
+                document.getElementById('adminPanel').style.display = 'block';
+                loadAdminDashboard();
+            } else { alert("Parol noto'g'ri!"); }
+        }
+
+        function logoutAdmin() { document.getElementById('adminPanel').style.display = 'none'; }
+
+        function loadAdminDashboard() {
+            document.getElementById('visitorCountDisplay').innerText = localStorage.getItem('omin_visits') || '1';
+            let sellers = JSON.parse(localStorage.getItem('omin_sellers') || '[]');
+            document.getElementById('sellerCountDisplay').innerText = sellers.filter(s => s.status === 'approved').length;
+
+            let sellersTbody = document.getElementById('sellersTableBody');
+            sellersTbody.innerHTML = '';
+            sellers.forEach(s => {
+                sellersTbody.innerHTML += `
+                    <tr>
+                        <td>${s.name}</td>
+                        <td>${s.phone}</td>
+                        <td><span class="status-badge ${s.status === 'approved' ? 'status-delivered' : 'status-pending'}">${s.status === 'approved' ? 'Tasdiqlangan' : 'Kutilmoqda'}</span></td>
+                        <td><b>${s.taxRate}%</b></td>
+                        <td>
+                            ${s.status === 'pending' ? `<button class="btn-action-sm" style="background:green;" onclick="approveSeller(${s.id})">Tasdiqlash</button>` : ''}
+                            <button class="btn-action-sm" style="background:purple;" onclick="setTax(${s.id})">Soliq %</button>
+                        </td>
+                    </tr>
+                `;
+            });
+
+            let orders = JSON.parse(localStorage.getItem('omin_orders') || '[]');
+            document.getElementById('orderCountDisplay').innerText = orders.length;
+
+            let tbody = document.getElementById('ordersTableBody');
+            tbody.innerHTML = '';
+            mapMarkerGroup.clearLayers();
+
+            orders.forEach(o => {
+                let badgeClass = o.status === 'Доставлен' ? 'status-delivered' : (o.status === 'В пути' ? 'status-onway' : 'status-pending');
+                tbody.innerHTML += `
+                    <tr>
+                        <td>#${o.id}</td>
+                        <td>${o.client}</td>
+                        <td><a href="tel:${o.phone}">${o.phone}</a></td>
+                        <td>${o.items}<br><b>${o.total} TJS</b></td>
+                        <td>${o.address}</td>
+                        <td><span class="status-badge ${badgeClass}">${o.status}</span></td>
+                        <td>
+                            <button class="btn-action-sm btn-onway" onclick="updateOrderStatus(${o.id}, 'В пути')">Yo'lda 🚚</button>
+                            <button class="btn-action-sm btn-delivered" onclick="updateOrderStatus(${o.id}, 'Доставлен')">Yetdi ✅</button>
+                        </td>
+                        <td><a href="https://www.google.com/maps?q=${o.lat},${o.lng}" target="_blank">Karta</a></td>
+                    </tr>
+                `;
+                L.marker([o.lat, o.lng]).addTo(mapMarkerGroup).bindPopup(`<b>Zakaz #${o.id}</b><br>${o.client}<br>Holat: ${o.status}`);
+            });
+        }
+
+        function approveSeller(id) {
+            let sellers = JSON.parse(localStorage.getItem('omin_sellers') || '[]');
+            let s = sellers.find(item => item.id === id);
+            if (s) { s.status = 'approved'; localStorage.setItem('omin_sellers', JSON.stringify(sellers)); loadAdminDashboard(); }
+        }
+
+        function setTax(id) {
+            let rate = prompt("Soliq / Komissiya foizini kiriting (masalan: 6):", "6");
+            if (rate !== null) {
+                let sellers = JSON.parse(localStorage.getItem('omin_sellers') || '[]');
+                let s = sellers.find(item => item.id === id);
+                if (s) { s.taxRate = parseFloat(rate); localStorage.setItem('omin_sellers', JSON.stringify(sellers)); loadAdminDashboard(); }
+            }
+        }
+
+        function updateOrderStatus(orderId, newStatus) {
+            let orders = JSON.parse(localStorage.getItem('omin_orders') || '[]');
+            let ord = orders.find(o => o.id === orderId);
+            if (ord) {
+                ord.status = newStatus;
+                localStorage.setItem('omin_orders', JSON.stringify(orders));
+                loadAdminDashboard();
+            }
+        }
+
+        function initLeafletMap() {
+            map = L.map('map').setView([40.2827, 69.6222], 12);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+            mapMarkerGroup = L.layerGroup().addTo(map);
+        }
+    </script>
+</body>
+</html>
